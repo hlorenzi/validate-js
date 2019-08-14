@@ -1,0 +1,28 @@
+{
+  "name": "@hlorenzi/validate",
+  "version": "1.0.0",
+  "description": "Object validation and normalization using a MongoDB-query-like schema.",
+  "repository": "github:hlorenzi/validate-js",
+  "homepage": "https://github.com/hlorenzi/validate-js#readme",
+  "bugs": "https://github.com/hlorenzi/validate-js/issues",
+  "keywords": [
+    "validator",
+    "validate",
+    "normalize",
+    "object",
+    "json",
+    "schema"
+  ],
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --experimental-modules test.js",
+    "test-coverage": "nyc --require esm --reporter text --reporter html npm test"
+  },
+  "author": "hlorenzi",
+  "license": "ISC",
+  "devDependencies": {
+    "esm": "3.2.25",
+    "nyc": "14.1.1"
+  }
+}
