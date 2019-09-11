@@ -20,7 +20,7 @@ export class Validator
 		}
 		catch (e)
 		{
-			if (Array.isArray(e) && e[0] instanceof ValidatorError)
+			if (Validator.isValidatorErrorArray(e))
 				return null
 			
 			throw e
@@ -28,19 +28,9 @@ export class Validator
 	}
 	
 	
-	static validateOrReturnErrors(schema, obj, options = null)
+	static isValidatorErrorArray(e)
 	{
-		try
-		{
-			return Validator.validateOrThrow(schema, obj, options)
-		}
-		catch (e)
-		{
-			if (Array.isArray(e) && e[0] instanceof ValidatorError)
-				return e
-			
-			throw e
-		}
+		return (Array.isArray(e) && e[0] instanceof ValidatorError)
 	}
 	
 	
@@ -53,10 +43,17 @@ export class Validator
 	}
 	
 	
+	static _cloneState(state)
+	{
+		return {
+			...state,
+			errors: [ ...state.errors ]
+		}
+	}
+	
+	
 	static _validateRecursive(schema, obj, state, path)
 	{
-		let newObj = { }
-		
 		if (obj === null)
 		{
 			if (schema.$optional)
@@ -74,55 +71,60 @@ export class Validator
 		if (schema.$type || schema.$either)
 		{
 			const subSchemas = (schema.$either || [schema])
-			const numErrorsBefore = state.errors.length
+			if (subSchemas.length === 0)
+				throw "invalid schema"
 			
+			let newState = null
 			let value = undefined
+			
 			for (const subSchema of subSchemas)
 			{
-				if (value !== undefined)
-					break
+				newState = Validator._cloneState(state)
+				value = undefined
 				
 				switch (subSchema.$type)
 				{
 					case "string":
-						value = Validator._validateString(subSchema, obj, state, path)
+						value = Validator._validateString(subSchema, obj, newState, path)
 						break
 						
 					case "int":
-						value = Validator._validateInt(subSchema, obj, state, path)
+						value = Validator._validateInt(subSchema, obj, newState, path)
 						break
 						
 					case "float":
-						value = Validator._validateFloat(subSchema, obj, state, path)
+						value = Validator._validateFloat(subSchema, obj, newState, path)
 						break
 						
 					case "bool":
-						value = Validator._validateBool(subSchema, obj, state, path)
+						value = Validator._validateBool(subSchema, obj, newState, path)
 						break
 						
 					case "array":
-						value = Validator._validateArray(subSchema, obj, state, path)
+						value = Validator._validateArray(subSchema, obj, newState, path)
 						break
 						
 					default:
 						throw "invalid schema"
 				}
-			}
-			
-			if (value === undefined)
-			{
-				if (subSchemas.length === 1)
-					return undefined
 				
-				state.errors = state.errors.slice(0, numErrorsBefore)
-				return Validator._onError(schema, obj, state, path, "value not in valid set")
+				if (subSchemas.length === 1)
+					break
+				
+				if (newState.errors.length === state.errors.length)
+					break
 			}
 			
-			state.errors = state.errors.slice(0, numErrorsBefore)
+			if (subSchemas.length !== 1 && newState.errors.length !== state.errors.length)
+				return Validator._onError(schema, obj, state, path, "value not in valid set")
+			
+			state.errors = newState.errors
 			return value
 		}
 		else
 		{
+			const newObj = Object.create(null)
+			
 			if (typeof obj !== "object" || Array.isArray(obj))
 				return Validator._onError(schema, obj, state, path, "not an object")
 			
@@ -150,9 +152,9 @@ export class Validator
 					}
 				}
 			}
-		}
 		
-		return newObj
+			return newObj
+		}
 	}
 	
 	
@@ -285,15 +287,15 @@ export class Validator
 
 export class ValidatorError
 {
-	constructor(path, message)
+	constructor(path, failure)
 	{
 		this.path = path
-		this.message = message
+		this.failure = failure
 	}
 	
 	
 	toString()
 	{
-		return "validation against schema failed at {" + this.path + " }: " + this.message
+		return "validation against schema failed at {" + this.path + " }: " + this.failure
 	}
 }

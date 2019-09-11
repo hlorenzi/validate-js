@@ -4,25 +4,30 @@ import assert from "assert"
 
 function test(schema, obj, options, expected)
 {
-	const resultOrErrors = Validator.validateOrReturnErrors(schema, obj, options)
 	const resultOrNull = Validator.validateOrNull(schema, obj, options)
 	
-	if (Array.isArray(resultOrErrors) && resultOrErrors[0] instanceof ValidatorError)
+	try
 	{
-		assert.deepEqual(resultOrNull, null)
-		assert.throws(() => Validator.validateOrThrow(schema, obj, options))
+		const result = Validator.validateOrThrow(schema, obj, options)
 		
-		resultOrErrors.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
-		
-		assert.deepEqual(resultOrErrors, expected)
-	}
-	else
-	{
-		if (isNaN(resultOrNull.x) && isNaN(expected.x))
+		if (typeof result.x === "number" && isNaN(result.x) &&
+			typeof expected.x === "number" && isNaN(expected.x))
 			return
 		
-		assert.deepEqual(resultOrErrors, resultOrNull)
-		assert.deepEqual(resultOrErrors, expected)
+		assert.deepEqual(result, resultOrNull)
+		assert.deepEqual(result, expected)
+	}
+	catch (e)
+	{
+		if (Validator.isValidatorErrorArray(e))
+		{
+			assert.deepEqual(resultOrNull, null)
+			
+			e.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
+			assert.deepEqual(e, expected)
+		}
+		else
+			throw e
 	}
 }
 
@@ -31,7 +36,13 @@ function test(schema, obj, options, expected)
 	const schema = { x: { $type: "<error>" } }
 	assert.throws(() => Validator.validateOrThrow(schema, { x: 0 }))
 	assert.throws(() => Validator.validateOrNull(schema, { x: 0 }))
-	assert.throws(() => Validator.validateOrReturnErrors(schema, { x: 0 }))
+}
+
+
+{
+	const schema = { x: { $either: [] } }
+	assert.throws(() => Validator.validateOrThrow(schema, { x: 0 }))
+	assert.throws(() => Validator.validateOrNull(schema, { x: 0 }))
 }
 
 
@@ -69,8 +80,8 @@ function test(schema, obj, options, expected)
 {
 	const schema = { name: { $type: "string", $optional: true } }
 	
-	test(schema, {}, null, [new ValidatorError("name", "missing field")])
-	test(schema, { name: undefined }, null, [new ValidatorError("name", "missing field")])
+	test(schema, {}, null, {})
+	test(schema, { name: undefined }, null, {})
 	
 	test(schema, { name: "Bob" }, null, { name: "Bob" })
 	test(schema, { name: null }, null, {})
@@ -360,6 +371,25 @@ function test(schema, obj, options, expected)
 	test(schema, { arr: [] }, null, [new ValidatorError("arr", "array too short")])
 	test(schema, { arr: [0] }, null, [new ValidatorError("arr", "array too short")])
 	test(schema, { arr: [0, 1, 2, 3] }, null, [new ValidatorError("arr", "array too long")])
+}
+
+
+{
+	const schema = { arr: { $optional: true, $type: "array", $of: { $type: "int", $min: 0, $max: 10 }, $minLen: 2, $maxLen: 3 } }
+	const options = { discardUnknownFields: true }
+	
+	test(schema, { arr: [0, 1] }, options, { arr: [0, 1] })
+	test(schema, { arr: [0, 1, 2] }, options, { arr: [0, 1, 2] })
+	
+	test(schema, { arr: [null, 1, 2] }, options, [new ValidatorError("arr[0]", "not an integer")])
+	test(schema, { arr: [0, "1", 2] }, options, [new ValidatorError("arr[1]", "not an integer")])
+	test(schema, { arr: [0, 1, 15] }, options, [new ValidatorError("arr[2]", "integer too big")])
+	test(schema, { arr: [0, 1, -5] }, options, [new ValidatorError("arr[2]", "integer too small")])
+	
+	test(schema, { arr: [] }, options, [new ValidatorError("arr", "array too short")])
+	test(schema, { arr: [0] }, options, [new ValidatorError("arr", "array too short")])
+	test(schema, { arr: [0, 1, 2, 3] }, options, [new ValidatorError("arr", "array too long")])
+	test(schema, { arr: [0, 1, 2, "3"] }, options, [new ValidatorError("arr", "array too long")])
 }
 
 

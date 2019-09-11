@@ -49,7 +49,6 @@ const normalizedObject = Validator.validateOrThrow(schema, object)
 ```js
 Validator.validateOrThrow(schema, object, options = {})
 Validator.validateOrNull(schema, object, options = {})
-Validator.validateOrReturnErrors(schema, object, options = {})
 ```
 
 These are the main entry points for validation. They all return
@@ -143,16 +142,21 @@ Multiple errors can be detected in a single validation pass, and the
 validation functions will provide an array of errors upon unsuccessful
 validation.
 
-- `validateOrThrow` will return the normalized object or throw the array of
-errors.
-- `validateOrNull` will return the normalized object or return `null` on error,
-never throwing.
-- `validateOrReturnErrors` will return the normalized object or return the
-array of errors itself, never throwing.
+- `validateOrThrow(schema, object, options = {})` will return the normalized
+object or throw the array of errors.
+- `validateOrNull(schema, object, options = {})` will return the normalized
+object or return `null` on error, never throwing.
 
-The error objects contain two fields:
+When the validation throws, you can check whether the error is coming from
+an actual validation error against the schema, as opposed to some other unexpected
+exception, by using:
+
+- `isValidatorErrorArray(err)` will return `true` if the given exception is an array of
+validation errors.
+
+Each object in the array of validation errors contains two fields:
 
 - `path` is a string describing the name of the field that is invalid,
 possibly using dot syntax for nested fields, such as `"address.street"`.
-- `message` is a string describing the internal reason for the field's value
+- `failure` is a string describing the internal reason for the field's value
 being rejected.

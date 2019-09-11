@@ -1,6 +1,6 @@
 {
   "name": "@hlorenzi/validate",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Object validation and normalization using a MongoDB-query-like schema.",
   "repository": "github:hlorenzi/validate-js",
   "homepage": "https://github.com/hlorenzi/validate-js#readme",
